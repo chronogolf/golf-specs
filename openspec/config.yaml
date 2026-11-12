@@ -1,32 +1,11 @@
 schema: spec-driven
 
-# Project context (optional)
-# Add only constraints that should guide OpenSpec artifacts and workflows.
-# Include constraints an agent cannot infer by reading the code.
-# Keep general project documentation and discoverable codebase facts out.
-# Example:
-#   context: |
-#     Designs and tasks must cover Windows, macOS, and Linux
-#     Write all artifacts in Spanish
-
-# Per-artifact rules (optional)
-# Add custom rules for specific artifacts.
-# Example:
-#   rules:
-#     proposal:
-#       - Keep proposals under 500 words
-#       - Always state what is out of scope
-#     tasks:
-#       - Break tasks into chunks of max 2 hours
-
-# Per-operation guidance (optional)
-# Add advisory guidance for how apply and archive work should be conducted.
-# This is separate from artifact rules above.
-# Example:
-#   operations:
-#     apply:
-#       guidance:
-#         - Keep test summaries concise
-#     archive:
-#       guidance:
-#         - Summarize the archive outcome before finishing
+rules:
+  tasks:
+    - 'Group tasks into PR-sized slices under headings like "## PR 1: <title>", and state which earlier slice each one depends on.'
+    - 'Each slice must be independently reviewable and shippable, and must leave master green. Each slice keeps its own tests, verification, and review tasks.'
+    - 'Order slices so each depends only on earlier ones (for example schema or backend, then API, then UI).'
+    - 'Size slices for a human reviewer, with one concern per slice. About 200 changed lines including specs is a ceiling, not a goal: smaller is better. Whenever a slice can be split further along its own layers while each part stays independently shippable and meaningful on its own, split it, even if it is already under 200 lines. A slice that cannot be split cleanly may run over. Always split refactors from behavior changes.'
+    - 'Do not over-split. Merge slices whose diffs say little without their neighbors, meaning a reviewer cannot judge the diff without opening another slice. More than 6 slices needs a stated reason.'
+    - 'Balance the slices. If one carries most of the work and another is trivial, move the boundary before finalizing.'
+    - 'State the estimated changed lines next to each slice heading so the split can be checked before implementation.'
