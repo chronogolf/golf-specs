@@ -1,5 +1,23 @@
 schema: spec-driven
 
+# Project context (optional)
+# Add only constraints that should guide OpenSpec artifacts and workflows.
+# Include constraints an agent cannot infer by reading the code.
+# Keep general project documentation and discoverable codebase facts out.
+# Example:
+#   context: |
+#     Designs and tasks must cover Windows, macOS, and Linux
+#     Write all artifacts in Spanish
+
+# Per-artifact rules (optional)
+# Add custom rules for specific artifacts.
+# Example:
+#   rules:
+#     proposal:
+#       - Keep proposals under 500 words
+#       - Always state what is out of scope
+#     tasks:
+#       - Break tasks into chunks of max 2 hours
 rules:
   tasks:
     - 'Group tasks into PR-sized slices under headings like "## PR 1: <title>", and state which earlier slice each one depends on.'
@@ -9,3 +27,15 @@ rules:
     - 'Do not over-split. Merge slices whose diffs say little without their neighbors, meaning a reviewer cannot judge the diff without opening another slice. More than 6 slices needs a stated reason.'
     - 'Balance the slices. If one carries most of the work and another is trivial, move the boundary before finalizing.'
     - 'State the estimated changed lines next to each slice heading so the split can be checked before implementation.'
+
+# Per-operation guidance (optional)
+# Add advisory guidance for how apply and archive work should be conducted.
+# This is separate from artifact rules above.
+# Example:
+#   operations:
+#     apply:
+#       guidance:
+#         - Keep test summaries concise
+#     archive:
+#       guidance:
+#         - Summarize the archive outcome before finishing
