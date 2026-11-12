@@ -17,7 +17,7 @@ Non-goals: retrying non-401 failures, changing report payloads, changing the det
 2. **Skip guard** reads references from the primary database and skips the payment if a Retail reference already exists. This covers the replica-lag case.
 3. **Circuit breaker** stops a club after `MAX_CONSECUTIVE_FAILURES` (default 3) failed attempts in one run. The run continues with other clubs.
 4. **Reuse** `attempt_to_report_sale`, so the success path (resolving the anomaly) is the same one the Report button uses.
-5. **Schedule** as a periodic worker in `app/workers/periodic/`, using the existing `config.periodic` pattern, on `SK_HA_BATCH`, with `retry: 0`, matching the detection worker.
+5. **Schedule** as a periodic worker in `app/workers/periodic/`, using the existing `config.periodic` pattern, on `SK_PERIODIC`, with `retry: 0`, matching the detection worker.
 6. **Logging** uses `Loggable` with distinct keys (no `message:` key in `details`).
 
 ## Risks
