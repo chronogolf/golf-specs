@@ -70,7 +70,7 @@ The request follows the TDD's sample, with two deliberate changes:
 - Numeric schedule fields must be JSON integers. The calculator treats anything else as `invalid`, and nothing coerces strings.
 - `start_month` and `payment_month` may be omitted or null: the first defaults to the first eligible month, the second to the start month (Annual).
 
-A missing `subscription` is a `400` from `params.require`, as in creation. Missing individual fields are `422` field errors. Values of the wrong shape (a price sent as an object, say) are dropped by `permit`, so they behave as if absent. The form never sends such shapes and no guard is added for them. JSON requests are also wrapped by Rails under the `subscription` key, so an empty body arrives as an empty object and is treated as missing.
+A missing `subscription`, or one that is not an object, is a `400`. Missing individual fields are `422` field errors. Values of the wrong shape (a price sent as an object, say) are dropped by `permit`, so they behave as if absent. The form never sends such shapes, so no guard is added for them. The exception is a `subscription_product` that is not an object (an array passes `permit`): it is a `lines[i].subscription_product` `invalid` error, not a server error. JSON requests are also wrapped by Rails under the `subscription` key, so an empty body arrives as an empty object and is treated as missing.
 
 ### 3. Resolving customer, products, and prices
 
