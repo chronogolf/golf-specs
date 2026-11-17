@@ -37,7 +37,7 @@ Depends on: PR 2, using its branch as this slice's base. Estimated split: ~30 im
 - [x] 3.4 Obtain approval if not already granted, then run the controller spec and the same approved commands for this slice. Verify they pass or record the precise blocker and any unavailable gate.
 - [x] 3.5 Request a fresh independent read-only review of this slice's code and specs, including the authorization rule and parameter handling. Verify every material finding is addressed, approved affected checks are rerun, and a fresh focused re-review covers any resulting fixes.
 
-## PR 4: Per-product rows, quote validity, and read-only proof (~120 planned, 163 actual changed lines)
+## PR 4: Per-product rows, quote validity, and read-only proof (~120 planned, 140 actual changed lines)
 
 Depends on: PR 3, using its branch as this slice's base. Estimated split: ~30 implementation lines + ~90 spec lines. Review concern: what each product row shows, how it relates to the quote totals under the club's tax settings, and proof that previewing changes nothing.
 

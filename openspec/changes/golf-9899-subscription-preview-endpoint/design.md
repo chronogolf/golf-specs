@@ -147,7 +147,7 @@ Quote validity: `Sale::Quote` rejects a mix of tax-inclusive and tax-exclusive l
 - Payment amounts are the calculator's `quote.amount`, which under existing conventions is what creation validates payments against. GOLF-9894's design already records that the TDD sample's tax-inclusive payment amount is illustrative. Preview does not recompute it.
 - Rows are matched to request lines by the quote's line order, which is the order the interactor added them.
 
-The response is rendered by `Subscription::PreviewSerializer`, with `Subscription::PreviewLineSerializer` for each product row, instead of a hash built in the controller. They reuse `Sale::QuoteSerializer` for the totals and do not change it, since its other callers expect totals only.
+The response, including the product rows, is rendered by `Subscription::PreviewSerializer` instead of a hash built in the controller. It reuses `Sale::QuoteSerializer` for the totals and does not change it, since its other callers expect totals only.
 
 ### 7. What the preview deliberately does not validate
 
