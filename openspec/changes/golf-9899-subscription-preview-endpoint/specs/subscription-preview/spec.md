@@ -37,12 +37,17 @@ The system SHALL allow a preview only for an employee who is permitted to sell s
 - **THEN** the response is `401`
 
 ### Requirement: Field and code validation errors
-The system SHALL respond `422` with an `errors` list of `{field, code}` entries when any input is invalid, reporting every problem found rather than only the first. Each `field` SHALL be the path of the offending input relative to the `subscription` object of the request, such as `schedule.start_month` or `lines[0].price`.
+The system SHALL respond `422` with an `errors` list of `{field, code}` entries when any input is invalid, reporting every problem found in the inputs it checked rather than only the first. The schedule is checked once the products and the payment method are accepted. Each `field` SHALL be the path of the offending input relative to the `subscription` object of the request, such as `schedule.start_month` or `lines[0].price`.
 
 #### Scenario: Several invalid inputs
 - **WHEN** a request has payment day 31 and a negative price on its first line
 - **THEN** the response is `422`
 - **AND** the errors include `schedule.payment_day` and `lines[0].price`, each with a code
+
+#### Scenario: Rejected product hides schedule errors
+- **WHEN** a request has an unknown product and payment day 31
+- **THEN** the errors include only the product's `lines[0].subscription_product` `not_found`
+- **AND** the payment day is reported once the product is fixed
 
 #### Scenario: Missing required input
 - **WHEN** a request omits the billing cycle

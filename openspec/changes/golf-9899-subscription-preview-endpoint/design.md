@@ -64,13 +64,13 @@ The request follows the TDD's sample, with two deliberate changes:
 }
 ```
 
-- `lines` has the shape of a create request's lines, so the form can send the same array to both. Bundle fields on a line and `auto_renew` do not change dates or amounts; they are not read here. The controller hands the interactor only `customer_id`, `lines`, `schedule`, and `sale_agreement`, and the interactor reads only the documented keys. Whether auto-renew suits the payment method stays a creation check.
+- `lines` has the shape of a create request's lines, so the form can send the same array to both. Bundle fields on a line and `auto_renew` do not change dates or amounts; they are not read here. The controller permits only the documented keys (`customer_id`, `lines`, `schedule`, `sale_agreement.payment_setup`), as `subscription_with_agreement_params` does for creation. Whether auto-renew suits the payment method stays a creation check.
 - `schedule.first_payment_today` is the "Take payment today" option. The TDD sample omits it, but the calculator takes it separately from the recurring schedule and GOLF-9902 needs it. It is read from the request only; it is not echoed back and creation does not persist it.
 - **Change from the TDD:** the request carries `payment_setup.method_name`, not `strategy_name` (decision 4).
-- Numeric schedule fields must be JSON integers. The calculator treats anything else as `invalid`, and the interactor does not coerce strings.
+- Numeric schedule fields must be JSON integers. The calculator treats anything else as `invalid`, and nothing coerces strings.
 - `start_month` and `payment_month` may be omitted or null: the first defaults to the first eligible month, the second to the start month (Annual).
 
-Missing or non-object `subscription` is a `400` (`params.require`, then `head :bad_request` for a non-object value; no exception is raised by hand). Missing individual fields are `422` field errors. The controller does not filter values with `permit`: `permit` would silently drop a wrongly shaped value (such as a price sent as an object) and the preview would quietly use a default. The interactor validates shapes and reports them as field errors. JSON requests are also wrapped by Rails under the `subscription` key, so an empty body arrives as an empty object and is treated as missing.
+A missing `subscription` is a `400` from `params.require`, as in creation. Missing individual fields are `422` field errors. Values of the wrong shape (a price sent as an object, say) are dropped by `permit`, so they behave as if absent. The form never sends such shapes and no guard is added for them. JSON requests are also wrapped by Rails under the `subscription` key, so an empty body arrives as an empty object and is treated as missing.
 
 ### 3. Resolving customer, products, and prices
 
@@ -78,9 +78,9 @@ The calculator wants resolved products and prices and leaves lookup and tenancy 
 
 - **Customer:** requires `customer_id` and an active customership of that user at the club (`club.active_customerships`). Otherwise `customer_id` is `required` or `not_found`. This is stricter than creation, which loads the user without checking the club. The Add form only offers the club's customers, so valid requests are unaffected, and preview should not confirm that arbitrary user IDs exist.
 - **Products:** allow-list the type before loading anything, using the calculator's own `SUPPORTED_PRODUCT_TYPES` (`Membership::Plan` and `Product::Service`) rather than a second list, and compare class names so no input is ever constantized (an unknown type is `unsupported`, an unknown ID is `not_found`). Then require `organization.part_of_mco_or_club?(club.id)`, the rule `Subscription::Create` applies, and report a failure as `not_found`. A product that exists but belongs elsewhere must look the same as one that does not exist.
-- **Prices:** a supplied price must be a non-negative, finite number; otherwise `lines[i].price` is `invalid`. An absent price means the product's current price. Zero stays zero. The original value is passed through so the quote receives what creation would, and the calculator's own price check still applies.
+- **Prices:** an absent price means the product's current price. Zero stays zero. The supplied value is passed through unchanged, so the quote receives what creation would. The interactor does not validate prices itself: the calculator already rejects negative, non-numeric, and non-finite prices as `lines[i].price` `invalid`.
 
-The interactor collects errors across customer, products, and schedule and returns them together. It always calls the calculator with the lines that resolved, so schedule errors are reported alongside line and customer errors. The calculator indexes only the lines it receives, so the interactor remembers each line's position in the request and maps calculator errors back to it. Errors that are only fallout are dropped: "lines required" when every line was already rejected, payment-row errors built from a partial quote, and strategy errors when the payment method was already rejected.
+The interactor collects the errors of the lines and the payment method. Only when both are accepted does it call the calculator, so the calculator always sees every line and its error indexes equal the request's. The customer is checked independently and its error is added either way. The consequence is that a bad product or payment method hides schedule errors until it is fixed. The form previews on every change, so this costs at most one more round trip, and it avoids dropping lines and remapping indexes.
 
 ### 4. Choose the strategy on the server
 
@@ -103,17 +103,9 @@ The rule is a constant, `Sale::PaymentSetup::DECLARED_SUBSCRIPTION_STRATEGY_MAPP
 
 Errors are `422` with `{"errors": [{"field": "schedule.start_month", "code": "before_first_eligible_month"}]}`. The existing private API error shape (`FormattedServiceMessages`) carries only `type` and `message`, and the form needs to attach an error to an input and branch on its code, so reusing it would force the form to parse text. This is a deliberate local shape, not a new global convention, and it is not translated: the form owns its wording. Authorization and not-found at club level keep the existing `403` and `404` handling.
 
-`field` is the path relative to the `subscription` object. Calculator fields map as follows:
+`field` is the path relative to the `subscription` object. The interactor's own errors are already in request paths. The calculator names errors after its own inputs, so only these are translated: its schedule fields (`billing_cycle`, `start_month`, `payment_day`, `payment_month`) get a `schedule.` prefix, and `payments` becomes `sale_agreement.payment_setup.payments_attributes`. `lines[i].price` is already the request path. The calculator's `lines[i].product` and `strategy` errors cannot occur, because the interactor resolves products and chooses the strategy itself.
 
-| Calculator field | Request field |
-| --- | --- |
-| `billing_cycle`, `start_month`, `payment_day`, `payment_month` | `schedule.<same name>` |
-| `lines`, `lines[i].price` | unchanged |
-| `lines[i].product` | `lines[i].subscription_product` |
-| `payments` | `sale_agreement.payment_setup.payments_attributes` |
-| `strategy` | `sale_agreement.payment_setup.strategy_name` |
-
-Codes are the calculator's (`required`, `invalid`, `unsupported`, `not_found`, `before_first_eligible_month`) plus the interactor's own, which reuse the same words. Because strategy is chosen on the server, `strategy` should not occur from the calculator; the mapping is there so it is not lost if it does. A zero total with a scheduled method comes back as `payments` `invalid`, the existing limitation recorded in GOLF-10170, and is not changed here.
+Codes are the calculator's (`required`, `invalid`, `unsupported`, `not_found`, `before_first_eligible_month`) plus the interactor's own, which reuse the same words. A zero total with a scheduled method comes back as `payments` `invalid`, the existing limitation recorded in GOLF-10170, and is not changed here. When the calculator rejects a line it removes it from the quote, which would also empty the quote and add a misleading `payments` error, so that error is skipped when a `lines` error is present.
 
 Quote validity: `Sale::Quote` rejects a mix of tax-inclusive and tax-exclusive lines, which creation would hit when it saves the quote. The calculator does not check this. The interactor runs the quote's own validation and reports a failure as `lines` `invalid`, so the preview cannot succeed where creation is certain to fail.
 
