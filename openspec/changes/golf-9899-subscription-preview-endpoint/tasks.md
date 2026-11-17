@@ -6,7 +6,7 @@ Estimates include implementation and specs, counting additions and deletions. Th
 
 The four slices separate four concerns: who and what the request refers to (PR 1), what is calculated and how failures are reported (PR 2), the HTTP surface and permission (PR 3), and the per-product display rows (PR 4). PRs 1 and 2 add one interactor, `Subscription::Preview`, with no caller until PR 3; each is judged by its own specs. Every slice leaves master green and changes no existing caller.
 
-## PR 1: Resolve customer, products, and prices (~155 planned, 204 actual changed lines)
+## PR 1: Resolve customer, products, and prices (~155 planned, 213 actual changed lines)
 
 Depends on: master. Estimated split: ~45 implementation lines + ~110 spec lines. Review concern: turning request values into the resolved, tenant-checked inputs the calculator expects, and which input errors are reported.
 
@@ -27,7 +27,7 @@ Depends on: PR 1, using its branch as this slice's base. Estimated split: ~60 im
 - [x] 2.5 Obtain approval if not already granted, then run the same approved commands for this slice. Verify they pass or record the precise blocker and any unavailable gate.
 - [x] 2.6 Request a fresh independent read-only review of this slice's code and specs, including the strategy selection and error mapping. Verify every material finding is addressed, approved affected checks are rerun, and a fresh focused re-review covers any resulting fixes.
 
-## PR 3: Route, permission, and response (~130 planned, 191 actual changed lines)
+## PR 3: Route, permission, and response (~130 planned, 199 actual changed lines)
 
 Depends on: PR 2, using its branch as this slice's base. Estimated split: ~30 implementation lines + ~100 spec lines. Review concern: the HTTP surface: who may call it, status codes, and the response shape the form will merge.
 

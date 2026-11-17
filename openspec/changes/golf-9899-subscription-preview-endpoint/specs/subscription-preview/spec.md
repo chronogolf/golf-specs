@@ -58,7 +58,7 @@ The system SHALL respond `422` with an `errors` list of `{field, code}` entries 
 - **THEN** the response reports it under the matching request field and the same code
 
 #### Scenario: Request without a subscription
-- **WHEN** the request body has no `subscription` object
+- **WHEN** the request body has no `subscription`, or it is not an object
 - **THEN** the response is `400`
 
 ### Requirement: Customer and product belong to the club
@@ -75,6 +75,10 @@ The system SHALL accept only a customer who has an active customership at the re
 #### Scenario: Unsupported product type
 - **WHEN** a line names a product type other than a membership plan or service
 - **THEN** the errors include `lines[0].subscription_product` with code `unsupported`
+
+#### Scenario: Product that is not an object
+- **WHEN** a line's `subscription_product` is present but is not an object
+- **THEN** the errors include `lines[0].subscription_product` with code `invalid`
 
 #### Scenario: Management company product
 - **WHEN** a line references a plan owned by the club's management company
