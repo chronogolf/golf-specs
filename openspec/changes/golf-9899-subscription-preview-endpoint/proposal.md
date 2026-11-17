@@ -31,7 +31,7 @@ None. `subscription-term-calculation` already covers the calculation; the endpoi
 
 - Implementation repository: `/Users/rushipatel/Documents/Repos/chronogolf-GOLF-9899-openspec`. All `app/`, `config/`, and `spec/` paths in this change refer to that checkout; planning artifacts live in `golf-specs`.
 - New route in `config/routes/private_api/clubs.rb` and a `preview` action in `app/controllers/private_api/clubs/subscriptions_controller.rb`.
-- New interactor `Subscription::Preview` under `app/interactors/subscription/`, which resolves the request and calls the existing `Subscription::Calculator.first_term`. The calculator, subscription models, abilities, and existing create path are not changed.
+- New interactor `Subscription::Preview` under `app/interactors/subscription/`, which resolves the request and calls the existing `Subscription::Calculator.first_term`. It adds a serializer for the response and a method-to-strategy mapping next to the existing payment setup mappings. The calculator, subscription models, abilities, and existing create path are not changed.
 - New specs for the controller action and interactor.
 - No migrations, feature flags, locale strings, frontend edits, or payment-provider calls. The private API has no OpenAPI entry for subscriptions today, so no swagger change is planned.
 - The preview and create requests must agree on field names. The form will merge the preview's `subscription` section into its create request, so [GOLF-9900](https://lightspeedhq.atlassian.net/browse/GOLF-9900) and [GOLF-9902](https://lightspeedhq.atlassian.net/browse/GOLF-9902) need the contract in `design.md`.

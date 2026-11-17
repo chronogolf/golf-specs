@@ -70,14 +70,14 @@ The request follows the TDD's sample, with two deliberate changes:
 - Numeric schedule fields must be JSON integers. The calculator treats anything else as `invalid`, and the interactor does not coerce strings.
 - `start_month` and `payment_month` may be omitted or null: the first defaults to the first eligible month, the second to the start month (Annual).
 
-Missing or non-object `subscription` is a `400`. Missing individual fields are `422` field errors. The controller does not filter values with `permit`: `permit` would silently drop a wrongly shaped value (such as a price sent as an object) and the preview would quietly use a default. The interactor validates shapes and reports them as field errors. JSON requests are also wrapped by Rails under the `subscription` key, so an empty body arrives as an empty object and is treated as missing.
+Missing or non-object `subscription` is a `400` (`params.require`, then `head :bad_request` for a non-object value; no exception is raised by hand). Missing individual fields are `422` field errors. The controller does not filter values with `permit`: `permit` would silently drop a wrongly shaped value (such as a price sent as an object) and the preview would quietly use a default. The interactor validates shapes and reports them as field errors. JSON requests are also wrapped by Rails under the `subscription` key, so an empty body arrives as an empty object and is treated as missing.
 
 ### 3. Resolving customer, products, and prices
 
 The calculator wants resolved products and prices and leaves lookup and tenancy to the caller. The interactor therefore:
 
 - **Customer:** requires `customer_id` and an active customership of that user at the club (`club.active_customerships`). Otherwise `customer_id` is `required` or `not_found`. This is stricter than creation, which loads the user without checking the club. The Add form only offers the club's customers, so valid requests are unaffected, and preview should not confirm that arbitrary user IDs exist.
-- **Products:** allow-list the type to `Membership::Plan` and `Product::Service` before loading anything, as `Sale::CalculateQuotePrice` does (an unknown type is `unsupported`, an unknown ID is `not_found`). Then require `organization.part_of_mco_or_club?(club.id)`, the rule `Subscription::Create` applies, and report a failure as `not_found`. A product that exists but belongs elsewhere must look the same as one that does not exist.
+- **Products:** allow-list the type before loading anything, using the calculator's own `SUPPORTED_PRODUCT_TYPES` (`Membership::Plan` and `Product::Service`) rather than a second list, and compare class names so no input is ever constantized (an unknown type is `unsupported`, an unknown ID is `not_found`). Then require `organization.part_of_mco_or_club?(club.id)`, the rule `Subscription::Create` applies, and report a failure as `not_found`. A product that exists but belongs elsewhere must look the same as one that does not exist.
 - **Prices:** a supplied price must be a non-negative, finite number; otherwise `lines[i].price` is `invalid`. An absent price means the product's current price. Zero stays zero. The original value is passed through so the quote receives what creation would, and the calculator's own price check still applies.
 
 The interactor collects errors across customer, products, and schedule and returns them together. It always calls the calculator with the lines that resolved, so schedule errors are reported alongside line and customer errors. The calculator indexes only the lines it receives, so the interactor remembers each line's position in the request and maps calculator errors back to it. Errors that are only fallout are dropped: "lines required" when every line was already rejected, payment-row errors built from a partial quote, and strategy errors when the payment method was already rejected.
@@ -97,7 +97,7 @@ If the request also sends `sale_agreement.payment_setup.strategy_name` and it di
 
 Vend POS is deprecated (confirmed by the ticket owner), so there is no `installment` branch. The TDD's "Installment for Vend clubs" is intentionally not carried over, and GOLF-9900 should not add it either. A club that still has a Vend integration gets `monthly`.
 
-The rule lives as a private method of `Subscription::Preview`. GOLF-9900 needs the same rule; extract it to a shared place when that ticket adds its second caller, not before.
+The rule is a constant, `Sale::PaymentSetup::DECLARED_SUBSCRIPTION_STRATEGY_MAPPING`, next to the existing method and strategy mappings it relates, not in the interactor. The calculator is not the home: GOLF-9894 keeps strategy selection with the caller. GOLF-9900 reads the same constant.
 
 ### 5. Error shape
 
@@ -155,7 +155,7 @@ Quote validity: `Sale::Quote` rejects a mix of tax-inclusive and tax-exclusive l
 - Payment amounts are the calculator's `quote.amount`, which under existing conventions is what creation validates payments against. GOLF-9894's design already records that the TDD sample's tax-inclusive payment amount is illustrative. Preview does not recompute it.
 - Rows are matched to request lines by the quote's line order, which is the order the interactor added them.
 
-The response is built in the interactor/controller layer with a small serializer. It does not change `Sale::QuoteSerializer`, whose callers expect totals only.
+The response is rendered by `Subscription::PreviewSerializer`, with `Subscription::PreviewLineSerializer` for each product row, instead of a hash built in the controller. They reuse `Sale::QuoteSerializer` for the totals and do not change it, since its other callers expect totals only.
 
 ### 7. What the preview deliberately does not validate
 
