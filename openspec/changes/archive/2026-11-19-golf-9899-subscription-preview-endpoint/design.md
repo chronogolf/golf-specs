@@ -175,3 +175,4 @@ Before implementation is published, obtain approval for focused verification com
 ## Open Questions
 
 - Confirm with GOLF-9900 that creation reads the same `schedule` keys, and that `first_payment_today` is accepted there or sent only to preview. This does not change the preview's behavior.
+- Confirm with GOLF-9902 that the `quote.lines` rows (name, price, and the amounts without tax, tax, and with tax per product) contain what the form needs. The fields were chosen from the ticket and the TDD, not from the form.
