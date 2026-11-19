@@ -145,7 +145,6 @@ Quote validity: `Sale::Quote` rejects a mix of tax-inclusive and tax-exclusive l
 - The per-product rows are under `quote`, not `subscription`. Arrays replace rather than merge, so putting `lines` inside `subscription` would overwrite the form's own lines when it merges. The TDD says `quote` is not sent, which makes it a safe home.
 - Each product row comes from the calculator's unsaved quote line: the line's name, price, and its `amount_without_tax`, `amount_tax`, and `amount_with_tax`. The totals come from the quote itself, not from summing rows, because the club's unharmonized tax mode computes tax per rate on the sum of lines, so row taxes can differ from the quote's tax by a cent. The rows are for display and the quote totals are the amounts that creation will use. This matches GOLF-9894's decision to read totals from the quote.
 - Payment amounts are the calculator's `quote.amount`, which under existing conventions is what creation validates payments against. GOLF-9894's design already records that the TDD sample's tax-inclusive payment amount is illustrative. Preview does not recompute it.
-- At a tax-exclusive club the payment amount is the pre-tax base: for monthly plans, charging adds tax on top (the sale's `amount_with_tax` becomes the amount to pay), so a customer is charged more than `payments_attributes[].amount`. The form should show the quote totals for what is charged and not present a payment amount as the charge. Other payment strategies were not checked.
 - Rows are matched to request lines by the quote's line order, which is the order the interactor added them.
 
 The response, including the product rows, is rendered by `Subscription::PreviewSerializer` instead of a hash built in the controller. It reuses `Sale::QuoteSerializer` for the totals and does not change it, since its other callers expect totals only.
@@ -176,4 +175,4 @@ Before implementation is published, obtain approval for focused verification com
 ## Open Questions
 
 - Confirm with GOLF-9900 that creation reads the same `schedule` keys, and that `first_payment_today` is accepted there or sent only to preview. This does not change the preview's behavior.
-- Confirm with GOLF-9902 that the `quote.lines` row shape and the pre-tax payment amounts give the form what it needs to display. The row shape was chosen from the ticket and the TDD and has not been confirmed with the form.
+- Confirm with GOLF-9902 that the `quote.lines` rows (name, price, and the amounts without tax, tax, and with tax per product) contain what the form needs. The fields were chosen from the ticket and the TDD, not from the form.
