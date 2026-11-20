@@ -11,7 +11,7 @@ How renewal works today, and what the declared path takes from it:
 | `app/use_cases/subscription/expire.rb` | Locks the expiring term, stops it, checks eligibility, then builds the next term and agreement and charges overdue payments, all in one transaction. | Keep the lock, stop, eligibility, and charge steps. Only the two "build" steps change. |
 | `Subscription#renewal(start_at)` | Next term starts at `start_at` (the job's `Time.current`) and ends after the previous duration. Copies only customer, club, auto-renew, and lines. | Not used for declared terms. A sibling method builds the successor from calculated dates and also copies the three schedule fields. |
 | `Sale::AgreementTemplate#new_instance` | Copies the previous payment count, splits the total evenly, and dates payments from the previous first payment's day. Refuses a payment before `sold_at`. | Reused for the quote, payment setup, and the "no payment before sold_at" check. Takes the payments explicitly instead of deriving them. |
-| `Subscription::Calculator.next_term` | Already returns start, end, one payment (amount and due date) and the quote for the term after `previous_term`, from an explicit schedule. | Called with the stored schedule. |
+| `Subscription::Calculator.next_term` | Returns start, end, one payment (amount and due date) and the quote for the term after `previous_term`. It originally took the schedule as a separate argument because the schedule columns did not exist yet when it was written. | Now reads the schedule from `previous_term` itself, so the dates it calculates and the schedule copied to the successor come from the same stored fields. |
 | `Subscription` model | The three schedule fields cannot be changed after a term is saved. Renewal copies only the fields in `RENEWAL_ATTRIBUTES` (customer, club, auto-renew), and the schedule fields are not in that list. | The successor must be built with the schedule fields already set, because setting them on a saved term would be rejected. The new successor-building method sets them explicitly. |
 
 ## Goals / Non-Goals
@@ -36,7 +36,7 @@ How renewal works today, and what the declared path takes from it:
 
 `Subscription::Expire` keeps its lock, stop, and eligibility steps and its charge of overdue payments. Right after those, it asks whether the term has a billing cycle:
 
-- declared: calculate the next term with `Calculator.next_term(previous_term:, schedule:)`, where the schedule is the term's stored three fields. Build the successor from the result and its agreement with the calculator's payment.
+- declared: calculate the next term with `Calculator.next_term(previous_term:)`, which reads the term's stored billing cycle, payment day, and payment month. A term with no billing cycle gets a "billing cycle required" error, so a legacy term cannot be calculated by accident. Build the successor from the result and its agreement with the calculator's payment.
 - not declared: the code that exists today.
 
 `Subscription::Expire` is a legacy use case, and `AGENTS.md` asks for new business logic in interactors, but the change here is a branch inside an existing flow, not new business logic. An interactor around only half of one transaction would split a single flow across two places and need to share its lock and rollback. The new code stays small methods inside the use case.
@@ -102,7 +102,7 @@ The declared path reads no ConfigCat flag. Its only gates are the ones `Expire` 
 
 | What the TDD says | What we do instead, and why |
 | --- | --- |
-| The TDD shows renewal calling `next_term` with two inputs: the schedule settings and today's date. | We pass only the term's stored billing cycle, payment day, and payment month. The calculator we already built takes just those, and it needs no date: the next term always starts the day after the previous one ends, so the day the job runs cannot matter. |
+| The TDD shows renewal calling `next_term` with two inputs: the schedule settings and today's date. | We pass only the previous term. The calculator reads the term's stored billing cycle, payment day, and payment month from it, and it needs no date: the next term always starts the day after the previous one ends, so the day the job runs cannot matter. |
 | The TDD says to copy the schedule to the next term by adding the three fields to `RENEWAL_ATTRIBUTES`, the list of fields `Subscription#renewal` copies. | That would copy the schedule, but `renewal` would still set the new term's start to the time the job runs and its end from the previous term's length. Those two rules are the drift this ticket removes. So we add a separate method that copies the three fields and takes the dates from the calculator, and leave `renewal` alone for legacy terms. |
 | The TDD describes `Subscription::Expire` as unchanged. | It needs one branch, "does this term have a billing cycle?". Everything else in `Expire` stays. |
 | The TDD mentions a switch to pause declared renewals in an emergency. | Not in GOLF-9898's criteria. It belongs with rollout in GOLF-9909. |
